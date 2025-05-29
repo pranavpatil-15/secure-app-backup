@@ -15,7 +15,7 @@ Email/SMS notifications using Amazon SNS for backup success/failure
 Secure architecture with role-based access and logging
 🛠️ How to Run Locally
 Clone the repo:
-git clone https://github.com/strangepranav/secure-ec2-backup-app.git
+git clone https://github.com/strangepranav/secure-app-backup.git
 cd secure-ec2-backup-app
 
 # Install dependencies:
