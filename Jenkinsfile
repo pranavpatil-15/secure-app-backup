@@ -1,38 +1,40 @@
 pipeline {
     agent any
 
+    environment {
+        // Optional: Set environment variables if needed
+    }
+
     stages {
-        stage('Clone Repo') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/strangepranav/secure-app-backup.git'
+                git 'https://github.com/pranav-patil-dev/secure-app-backup.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'pip install -r requirements.txt'
+                sh '''
+                sudo apt-get update
+                sudo apt-get install -y python3 python3-pip
+                pip3 install -r requirements.txt
+                '''
             }
         }
 
-        stage('Run Backup Script') {
+        stage('Run App') {
             steps {
-                sh 'python3 backup_test.py'
-            }
-        }
-
-        stage('Restart Flask App') {
-            steps {
-                sh 'sudo systemctl restart flask-app' // or your app restart command
+                sh 'nohup python3 app_test.py &'
             }
         }
     }
 
     post {
         success {
-            echo '✅ Backup and deploy successful!'
+            echo '✅ Deployment successful!'
         }
         failure {
-            echo '❌ Pipeline failed!'
+            echo '❌ Build failed.'
         }
     }
 }
