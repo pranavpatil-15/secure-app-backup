@@ -1,99 +1,66 @@
-import os
-import zipfile
+from flask import Flask, jsonify, render_template
 import boto3
+import os
 from datetime import datetime
-from cryptography.fernet import Fernet
 
-# === CONFIGURATION ===
-FILES_DIR = '/home/ubuntu/ec2_backup_project/files_to_backup'
-BACKUP_DIR = '/home/ubuntu/backups'
-BUCKET_NAME = 'cloud-ec2-backups'
-KEY_FILE_PATH = '/home/ubuntu/ec2_backup_project/secret.key'
+app = Flask(__name__, template_folder="templates")
 
-DB_USER = 'backup'
-DB_PASSWORD = '1542003'
-DB_NAME = 'backupdb'
-DB_BACKUP_FILE = f"/tmp/db_backup_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.sql.gz"
+# Configuration
+BUCKET_NAME = "cloud-ec2-backups"
+BACKUP_DIR = "/home/ubuntu/ec2_backup_project/files_to_backup"
+TEMP_DIR = "/tmp"  # Temporary directory for downloads
+s3 = boto3.client("s3")
 
-SNS_TOPIC_ARN = 'arn:aws:sns:us-east-1:123456789012:BackupAlerts'  # Replace with actual ARN
 
-# === AWS CLIENTS ===
-s3 = boto3.client('s3')
-sns = boto3.client('sns')
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-# === ENCRYPTION ===
-def load_or_create_key():
-    if os.path.exists(KEY_FILE_PATH):
-        with open(KEY_FILE_PATH, 'rb') as key_file:
-            return key_file.read()
-    else:
-        key = Fernet.generate_key()
-        with open(KEY_FILE_PATH, 'wb') as key_file:
-            key_file.write(key)
-        return key
+@app.route("/list_backups")
+def list_backups():
+    """List all backups stored in S3."""
+    try:
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME)
+        objects = response.get("Contents", [])
+        backups = [obj["Key"] for obj in objects]
+        return jsonify(backups)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-ENCRYPTION_KEY = load_or_create_key()
-cipher = Fernet(ENCRYPTION_KEY)
-
-def encrypt_file(file_path):
-    with open(file_path, "rb") as file:
-        encrypted_data = cipher.encrypt(file.read())
-    enc_file_path = file_path + ".enc"
-    with open(enc_file_path, "wb") as file:
-        file.write(encrypted_data)
-    os.remove(file_path)  # Clean up the unencrypted file
-    return enc_file_path
-
+@app.route("/backup")
 def create_backup():
-    if not os.path.exists(BACKUP_DIR):
-        os.makedirs(BACKUP_DIR)
-
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    zip_filename = f'backup_{timestamp}.zip'
-    zip_path = os.path.join(BACKUP_DIR, zip_filename)
-
-    # Step 1: Zip files
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as backup_zip:
-        for foldername, subfolders, filenames in os.walk(FILES_DIR):
-            for filename in filenames:
-                file_path = os.path.join(foldername, filename)
-                arcname = os.path.relpath(file_path, FILES_DIR)
-                backup_zip.write(file_path, arcname)
-    print(f"[✔] Created ZIP: {zip_filename}")
-
-    # Step 2: MySQL dump
-    dump_cmd = f"mysqldump -u {DB_USER} -p'{DB_PASSWORD}' {DB_NAME} | gzip > {DB_BACKUP_FILE}"
-    dump_status = os.system(dump_cmd)
-    if dump_status != 0:
-        print("[✘] MySQL backup failed")
-        return
-    print("[✔] MySQL dump completed")
-
-    # Step 3: Encrypt
-    encrypted_zip_path = encrypt_file(zip_path)
-    encrypted_db_path = encrypt_file(DB_BACKUP_FILE)
-    print("[✔] Files encrypted")
-
-    # Step 4: Upload to S3
     try:
-        s3.upload_file(encrypted_zip_path, BUCKET_NAME, os.path.basename(encrypted_zip_path))
-        s3.upload_file(encrypted_db_path, BUCKET_NAME, os.path.basename(encrypted_db_path))
-        print("[✔] Uploaded to S3")
-    except Exception as e:
-        print(f"[✘] S3 Upload Failed: {e}")
-        return
+        backup_filename = f"backup_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.tar.gz"
+        local_backup_path = os.path.join(TEMP_DIR, backup_filename)
 
-    # Step 5: Notify via SNS
+        # Create tar.gz archive of the directory
+        os.system(f"tar -czf {local_backup_path} -C {BACKUP_DIR} .")
+
+        # Upload to S3
+        s3.upload_file(local_backup_path, BUCKET_NAME, backup_filename)
+
+        return jsonify({"message": f"{backup_filename} uploaded to {BUCKET_NAME} successfully!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+@app.route("/restore/<backup_name>")
+
+def restore_backup(backup_name):
     try:
-        sns.publish(
-            TopicArn=SNS_TOPIC_ARN,
-            Message=f"Backup Successful at {timestamp}",
-            Subject="EC2 Backup Status"
-        )
-        print("[✔] SNS notification sent")
+        local_backup_path = os.path.join(TEMP_DIR, backup_name)
+
+        # Ensure file exists in S3 before downloading
+        s3.head_object(Bucket=BUCKET_NAME, Key=backup_name)
+        s3.download_file(BUCKET_NAME, backup_name, local_backup_path)
+
+        # Extract the tar.gz archive
+        os.system(f"tar -xzf {local_backup_path} -C {BACKUP_DIR}")
+        return jsonify({"message": f"{backup_name} restored successfully!"})
     except Exception as e:
-        print(f"[✘] SNS Notification Failed: {e}")
+        return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    create_backup()
-
+if __name__ == "__main__":  # Line 66 (Correct indentation)
+    try:  # Line 67 (Correct indentation)
+        app.run(host="10.0.0.60", port=5005, debug=True)
+    except OSError as e:
+        if "Address already in use" in str(e):
+            print("Port 5000 is already in use. Try a different port.")

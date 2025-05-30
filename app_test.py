@@ -2,6 +2,7 @@ from flask import Flask, jsonify, render_template, send_file
 import boto3
 import os
 from cryptography.fernet import Fernet
+import datetime
 
 app = Flask(__name__)
 BUCKET_NAME = "cloud-ec2-backups"
@@ -14,8 +15,22 @@ def get_cipher():
         key = key_file.read()
     return Fernet(key)
 
+# ✅ Delete old backups older than 30 days
+def delete_old_backups(days=30):
+    try:
+        threshold_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
+        response = s3.list_objects_v2(Bucket=BUCKET_NAME)
+        if "Contents" in response:
+            for obj in response["Contents"]:
+                if obj["LastModified"] < threshold_date:
+                    s3.delete_object(Bucket=BUCKET_NAME, Key=obj["Key"])
+                    print(f"Deleted old backup: {obj['Key']}")
+    except Exception as e:
+        print(f"Error deleting old backups: {str(e)}")
+
 @app.route("/")
 def home():
+    delete_old_backups()  # ✅ Clean old backups on dashboard load
     return render_template("index.html")
 
 @app.route("/list_backups")
