@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'ec2-agent' }  // use the name you gave your agent node
+    agent { label 'ec2-Agent' }  // use the name you gave your agent node
     stages {
         stage('Pull from GitHub') {
             steps {
