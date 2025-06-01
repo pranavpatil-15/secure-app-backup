@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        // Activate virtual environment path
-        VENV_PATH = 'venv/bin/activate'
-    }
-
     stages {
 
         stage('Clone Repository') {
@@ -18,10 +13,9 @@ pipeline {
         stage('Set Up Environment') {
             steps {
                 echo '📦 Setting up Python environment...'
-                sh '''#!/bin/bash
+                sh '''
                     python3 -m venv venv
-                    source venv/bin/activate
-                    pip install --break-system-packages -r requirements.txt
+                    ./venv/bin/pip install --break-system-packages -r requirements.txt
                 '''
             }
         }
@@ -29,9 +23,8 @@ pipeline {
         stage('Run Backup Script') {
             steps {
                 echo '🛠️ Running backup script...'
-                sh '''#!/bin/bash
-                    source venv/bin/activate
-                    python3 backup_test.py
+                sh '''
+                    ./venv/bin/python3 backup_test.py
                 '''
             }
         }
