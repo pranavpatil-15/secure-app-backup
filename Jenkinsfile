@@ -4,7 +4,6 @@ pipeline {
     environment {
         FLASK_ENV = 'production'
         APP_FILE = 'app_test.py'
-        BACKUP_DIR = '/home/ubuntu/secure-app-backup'
     }
 
     stages {
