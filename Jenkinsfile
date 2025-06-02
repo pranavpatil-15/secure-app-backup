@@ -1,49 +1,75 @@
 pipeline {
     agent { label 'agent-vinod' }
 
-    stages {
+    environment {
+        VENV_DIR = "venv"
+        PIP = "./${VENV_DIR}/bin/pip"
+        PYTHON = "./${VENV_DIR}/bin/python"
+    }
 
-        stage('Install Dependencies') {
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install System Dependencies') {
             steps {
                 echo '🔧 Installing system-level dependencies...'
                 sh '''
                     sudo apt-get update
-                    sudo apt-get install -y python3-venv python3-pip
+                    sudo apt-get install -y python3-venv python3-pip wget
                 '''
             }
         }
 
-        stage('Clone Repository') {
+        stage('Set Up Python Virtual Environment') {
             steps {
-                echo '✅ Cloning repository...'
-                sh 'ls -la'
+                echo '📦 Setting up Python virtual environment...'
+                sh '''
+                    python3 -m venv ${VENV_DIR} || true
+                    
+                    if [ ! -f "${PIP}" ]; then
+                        echo '⚠️ pip not found, installing manually...'
+                        wget https://bootstrap.pypa.io/get-pip.py -O get-pip.py
+                        ${PYTHON} get-pip.py
+                    fi
+                    
+                    ${PIP} install --upgrade pip
+                '''
             }
         }
 
-        stage('Set Up Environment') {
+        stage('Install Project Dependencies') {
             steps {
-                echo '📦 Setting up Python environment...'
+                echo '📥 Installing project dependencies...'
                 sh '''
-                    python3 -m venv venv
-                    ./venv/bin/pip install --break-system-packages -r requirements.txt
+                    if [ -f requirements.txt ]; then
+                        ${PIP} install --break-system-packages -r requirements.txt
+                    else
+                        ${PIP} install flask boto3 cryptography
+                    fi
                 '''
             }
         }
 
         stage('Run Backup Script') {
             steps {
-                echo '🛠️ Running backup script...'
-                sh './venv/bin/python3 backup_test.py'
+                echo '🚀 Running backup script...'
+                sh '''
+                    ${PYTHON} backup_test.py
+                '''
             }
         }
     }
 
     post {
-        success {
-            echo '✅ Backup job completed successfully.'
-        }
         failure {
             echo '❌ Backup job failed.'
+        }
+        success {
+            echo '✅ Backup job completed successfully.'
         }
     }
 }
