@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'agent-vinod' }
 
     stages {
 
@@ -39,4 +39,3 @@ pipeline {
         }
     }
 }
-
