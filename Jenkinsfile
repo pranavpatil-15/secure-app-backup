@@ -3,6 +3,16 @@ pipeline {
 
     stages {
 
+        stage('Install Dependencies') {
+            steps {
+                echo '🔧 Installing system-level dependencies...'
+                sh '''
+                    sudo apt-get update
+                    sudo apt-get install -y python3-venv python3-pip
+                '''
+            }
+        }
+
         stage('Clone Repository') {
             steps {
                 echo '✅ Cloning repository...'
@@ -23,9 +33,7 @@ pipeline {
         stage('Run Backup Script') {
             steps {
                 echo '🛠️ Running backup script...'
-                sh '''
-                    ./venv/bin/python3 backup_test.py
-                '''
+                sh './venv/bin/python3 backup_test.py'
             }
         }
     }
