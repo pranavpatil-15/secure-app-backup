@@ -3,6 +3,8 @@ pipeline {
 
     environment {
         VENV_DIR = 'venv'
+        PYTHON = "${env.WORKSPACE}/${env.VENV_DIR}/bin/python"
+        PIP = "${env.WORKSPACE}/${env.VENV_DIR}/bin/pip"
     }
 
     stages {
@@ -15,15 +17,16 @@ pipeline {
 
         stage('Checkout SCM') {
             steps {
+                echo "🔄 Checking out source code from SCM..."
                 checkout scm
             }
         }
 
         stage('Install System Dependencies') {
             steps {
-                echo "🔧 Installing system-level dependencies..."
+                echo "🔧 Installing system-level dependencies (python3-venv, python3-pip, wget)..."
                 sh '''
-                    sudo apt-get update
+                    sudo apt-get update -y
                     sudo apt-get install -y python3-venv python3-pip wget
                 '''
             }
@@ -31,29 +34,29 @@ pipeline {
 
         stage('Set Up Python Virtual Environment') {
             steps {
-                echo "📦 Setting up Python virtual environment and upgrading pip..."
-                sh '''
-                    python3 -m venv ${VENV_DIR}
-                    ${VENV_DIR}/bin/pip install --upgrade pip setuptools wheel
-                '''
+                echo "📦 Setting up Python virtual environment and upgrading pip, setuptools, wheel..."
+                sh """
+                    python3 -m venv ${env.VENV_DIR}
+                    ${env.PIP} install --upgrade pip setuptools wheel
+                """
             }
         }
 
         stage('Install Project Dependencies') {
             steps {
-                echo "📥 Installing project Python dependencies..."
-                sh '''
-                    ${VENV_DIR}/bin/pip install -r requirements.txt
-                '''
+                echo "📥 Installing Python dependencies from requirements.txt..."
+                sh """
+                    ${env.PIP} install -r requirements.txt
+                """
             }
         }
 
         stage('Run Backup Script') {
             steps {
                 echo "🚀 Running backup script..."
-                sh '''
-                    ${VENV_DIR}/bin/python your_backup_script.py
-                '''
+                sh """
+                    ${env.PYTHON} your_backup_script.py
+                """
             }
         }
     }
@@ -65,5 +68,10 @@ pipeline {
         failure {
             echo "❌ Backup job failed."
         }
+        always {
+            echo "🧹 Cleaning up workspace after job..."
+            cleanWs()
+        }
     }
 }
+
