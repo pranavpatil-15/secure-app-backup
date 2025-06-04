@@ -2,61 +2,33 @@ pipeline {
     agent { label 'ec2-agent' }
 
     environment {
-        VENV_DIR = 'venv'
-        PYTHON = "${env.WORKSPACE}/${env.VENV_DIR}/bin/python"
-        PIP = "${env.WORKSPACE}/${env.VENV_DIR}/bin/pip"
+        VENV_DIR = '/home/ubuntu/ec2_backup_project/venv'
+        PROJECT_DIR = '/home/ubuntu/ec2_backup_project'
     }
 
     stages {
-        stage('Clean Workspace') {
-            steps {
-                echo "🧹 Cleaning old virtual environment if exists..."
-                sh "rm -rf ${env.VENV_DIR}"
-            }
-        }
-
         stage('Checkout SCM') {
             steps {
-                echo "🔄 Checking out source code from SCM..."
-                checkout scm
+                echo "📦 Skipping Git checkout since code already exists on EC2"
             }
         }
 
-        stage('Install System Dependencies') {
+        stage('Activate Virtual Environment') {
             steps {
-                echo "🔧 Installing system-level dependencies (python3-venv, python3-pip, wget)..."
+                echo "✅ Using existing virtual environment"
                 sh '''
-                    sudo apt-get update -y
-                    sudo apt-get install -y python3-venv python3-pip wget
+                    ${VENV_DIR}/bin/pip --version
                 '''
-            }
-        }
-
-        stage('Set Up Python Virtual Environment') {
-            steps {
-                echo "📦 Setting up Python virtual environment and upgrading pip, setuptools, wheel..."
-                sh """
-                    python3 -m venv ${env.VENV_DIR}
-                    ${env.PIP} install --upgrade pip setuptools wheel
-                """
-            }
-        }
-
-        stage('Install Project Dependencies') {
-            steps {
-                echo "📥 Installing Python dependencies from requirements.txt..."
-                sh """
-                    ${env.PIP} install -r requirements.txt
-                """
             }
         }
 
         stage('Run Backup Script') {
             steps {
-                echo "🚀 Running backup script..."
-                sh """
-                    ${env.PYTHON} your_backup_script.py
-                """
+                echo "🚀 Running backup script from existing project dir..."
+                sh '''
+                    cd ${PROJECT_DIR}
+                    ${VENV_DIR}/bin/python backup_test.py
+                '''
             }
         }
     }
@@ -68,10 +40,5 @@ pipeline {
         failure {
             echo "❌ Backup job failed."
         }
-        always {
-            echo "🧹 Cleaning up workspace after job..."
-            cleanWs()
-        }
     }
 }
-
