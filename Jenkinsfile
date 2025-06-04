@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'agent-vinod' }
+    agent { label 'ec2-agent' }
 
     environment {
         VENV_DIR = 'venv'
