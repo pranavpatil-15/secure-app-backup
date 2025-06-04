@@ -7,27 +7,54 @@ pipeline {
     }
 
     stages {
-        stage('Checkout SCM') {
+        stage('Validate Virtual Environment') {
             steps {
-                echo "📦 Skipping Git checkout since code already exists on EC2"
+                echo "🔍 Checking virtual environment and pip version"
+                sh '''
+                    if [ ! -d "${VENV_DIR}" ]; then
+                        echo "Virtual environment not found! Creating it now..."
+                        python3 -m venv ${VENV_DIR}
+                    fi
+
+                    # Activate venv and install pip if missing
+                    source ${VENV_DIR}/bin/activate
+
+                    # Ensure pip is installed/upgraded inside venv
+                    if ! command -v pip > /dev/null; then
+                        echo "pip not found, installing pip..."
+                        python get-pip.py
+                    else
+                        echo "pip found, upgrading pip..."
+                        pip install --upgrade pip
+                    fi
+
+                    pip --version
+                '''
             }
         }
 
-        stage('Activate Virtual Environment') {
+        stage('Install Requirements') {
             steps {
-                echo "✅ Using existing virtual environment"
+                echo "📦 Installing Python dependencies from requirements.txt"
                 sh '''
-                    ${VENV_DIR}/bin/pip --version
+                    source ${VENV_DIR}/bin/activate
+                    cd ${PROJECT_DIR}
+                    if [ -f requirements.txt ]; then
+                        pip install -r requirements.txt
+                    else
+                        echo "No requirements.txt found, skipping pip install."
+                    fi
                 '''
             }
         }
 
         stage('Run Backup Script') {
             steps {
-                echo "🚀 Running backup script from existing project dir..."
+                echo "🚀 Running backup script..."
                 sh '''
+                    source ${VENV_DIR}/bin/activate
                     cd ${PROJECT_DIR}
-                    ${VENV_DIR}/bin/python backup_test.py
+                    python backup_test.py
                 '''
             }
         }
