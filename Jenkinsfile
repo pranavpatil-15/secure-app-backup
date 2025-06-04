@@ -14,9 +14,10 @@ pipeline {
 
         stage('Run Flask App') {
             steps {
+                echo "📦 Running Flask app..."
                 sh '''
-                    echo "🔄 Running app_test.py (Flask App for Dashboard)..."
                     nohup python3 app_test.py > flask_app.log 2>&1 &
+                    sleep 5  # Give it time to start
                 '''
             }
         }
