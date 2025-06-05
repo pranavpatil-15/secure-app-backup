@@ -9,20 +9,11 @@ pipeline {
             }
         }
 
-        stage('Set Permissions & Activate venv') {
-            steps {
-                echo '🔧 Setting up virtual environment permissions...'
-                sh '''
-                    chmod +x venv/bin/activate || true
-                '''
-            }
-        }
-
         stage('Run Flask App') {
             steps {
                 echo '🚀 Starting Flask App...'
                 sh '''
-                    source venv/bin/activate
+                    . venv/bin/activate
                     nohup python3 app_test.py > flask_app.log 2>&1 &
                 '''
             }
