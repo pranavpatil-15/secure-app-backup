@@ -13,18 +13,14 @@ pipeline {
             steps {
                 echo '🚀 Starting Flask App...'
                 sh '''
-                    # Activate virtual environment (use . instead of source for /bin/sh)
-                    . /home/ubuntu/myenv/bin/activate
+                    chmod +x venv/bin/activate
+                    . venv/bin/activate || source venv/bin/activate
 
-                    # Navigate to Jenkins workspace directory
-                    cd /home/ubuntu/workspace/ec2-cloud-backup
-
-                    # Kill any existing Flask app
+                    # Kill if already running
                     pkill -f app_test.py || true
 
-                    # Start Flask app in background using nohup
-                    nohup python3 app_test.py --host=0.0.0.0 --port=5000 > flask_app.log 2>&1 &
-
+                    # Start Flask app in background
+                    nohup python3 app_test.py > flask_app.log 2>&1 &
                     sleep 5
                 '''
             }
