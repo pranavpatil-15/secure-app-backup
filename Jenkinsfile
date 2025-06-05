@@ -9,18 +9,26 @@ pipeline {
             }
         }
 
-        stage('Run Flask App') {
+        stage('Setup and Run Flask App') {
             steps {
-                echo '🚀 Starting Flask App...'
+                echo '🚀 Setting up environment and starting Flask app...'
                 sh '''
-                    chmod +x venv/bin/activate
-                    . venv/bin/activate || source venv/bin/activate
+                    # Create virtual environment if not exists
+                    if [ ! -d "venv" ]; then
+                        python3 -m venv venv
+                    fi
 
-                    # Kill if already running
+                    # Activate venv and install requirements
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install flask
+
+                    # Kill running Flask app if any
                     pkill -f app_test.py || true
 
-                    # Start Flask app in background
-                    nohup python3 app_test.py > flask_app.log 2>&1 &
+                    # Run Flask app in background binding to 0.0.0.0
+                    nohup python3 app_test.py --host=0.0.0.0 --port=5000 > flask_app.log 2>&1 &
+
                     sleep 5
                 '''
             }
@@ -32,7 +40,7 @@ pipeline {
             echo '✅ Flask app launched successfully!'
         }
         failure {
-            echo '❌ Build failed. Here is the log:'
+            echo '❌ Build failed. Logs:'
             sh 'cat flask_app.log || true'
         }
     }
