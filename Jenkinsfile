@@ -4,17 +4,26 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo '🔄 Cloning repo from GitHub...'
+                echo '🔄 Cloning repository...'
                 git branch: 'main', url: 'https://github.com/pranavpatil-15/secure-app-backup.git'
             }
         }
 
-        stage('Start Flask App') {
+        stage('Set Permissions & Activate venv') {
             steps {
-                echo '🚀 Running app_test.py from virtual environment...'
+                echo '🔧 Setting up virtual environment permissions...'
+                sh '''
+                    chmod +x venv/bin/activate || true
+                '''
+            }
+        }
+
+        stage('Run Flask App') {
+            steps {
+                echo '🚀 Starting Flask App...'
                 sh '''
                     source venv/bin/activate
-                    nohup python app_test.py > flask_app.log 2>&1 &
+                    nohup python3 app_test.py > flask_app.log 2>&1 &
                 '''
             }
         }
@@ -22,10 +31,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Flask app launched successfully and running in background!'
+            echo '✅ Flask app launched successfully!'
         }
         failure {
-            echo '❌ Failed to start Flask app. Check logs below:'
+            echo '❌ Build failed. Here is the log:'
             sh 'cat flask_app.log || true'
         }
     }
