@@ -13,8 +13,15 @@ pipeline {
             steps {
                 echo '🚀 Starting Flask App...'
                 sh '''
-                    . venv/bin/activate
+                    chmod +x venv/bin/activate
+                    . venv/bin/activate || source venv/bin/activate
+
+                    # Kill if already running
+                    pkill -f app_test.py || true
+
+                    # Start Flask app in background
                     nohup python3 app_test.py > flask_app.log 2>&1 &
+                    sleep 5
                 '''
             }
         }
