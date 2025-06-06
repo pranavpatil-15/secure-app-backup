@@ -22,7 +22,7 @@ pipeline {
             steps {
                 sh '''
                 . venv/bin/activate
-                nohup python3 app_test.py > flask.log 2>&1 &
+                nohup venv/bin/python app_test.py > flask.log 2>&1 &
                 '''
             }
         }

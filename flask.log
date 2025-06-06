@@ -1,14 +1,4 @@
-nohup: ignoring input
- * Serving Flask app 'app_test'
- * Debug mode: on
-[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
- * Running on all addresses (0.0.0.0)
- * Running on http://127.0.0.1:5000
- * Running on http://172.31.12.61:5000
-[33mPress CTRL+C to quit[0m
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 662-932-761
-136.185.96.129 - - [06/Jun/2025 05:18:10] "GET / HTTP/1.1" 200 -
-136.185.96.129 - - [06/Jun/2025 05:18:11] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
-52.66.51.217 - - [06/Jun/2025 05:18:24] "GET / HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "/home/ubuntu/workspace/ec2-cloud-backup/app_test.py", line 1, in <module>
+    from flask import Flask, jsonify, render_template, send_file
+ModuleNotFoundError: No module named 'flask'
