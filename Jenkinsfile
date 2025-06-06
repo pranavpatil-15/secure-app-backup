@@ -13,23 +13,31 @@ pipeline {
             steps {
                 echo '🚀 Setting up environment and starting Flask app...'
                 sh '''
+                    cd $WORKSPACE/ec2-cloud-backup
+
                     # Create virtual environment if not exists
                     if [ ! -d "venv" ]; then
                         python3 -m venv venv
                     fi
 
-                    # Activate venv and install requirements
+                    # Activate venv
                     . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install flask
 
-                    # Kill running Flask app if any
+                    # Install dependencies
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+
+                    # Kill old Flask app if running
                     pkill -f app_test.py || true
 
-                    # Run Flask app in background binding to 0.0.0.0
-                    nohup python3 app_test.py --host=0.0.0.0 --port=5000 > flask_app.log 2>&1 &
+                    # Run Flask app with correct syntax (no --host here)
+                    nohup python3 app_test.py > flask_app.log 2>&1 &
 
+                    # Wait for app to start
                     sleep 5
+
+                    # Optional: check if app is reachable
+                    curl -I http://localhost:5000 || echo "⚠️ Flask app not responding."
                 '''
             }
         }
@@ -40,8 +48,9 @@ pipeline {
             echo '✅ Flask app launched successfully!'
         }
         failure {
-            echo '❌ Build failed. Logs:'
-            sh 'cat flask_app.log || true'
+            echo '❌ Build failed. Showing Flask log:'
+            sh 'cat $WORKSPACE/ec2-cloud-backup/flask_app.log || true'
         }
     }
 }
+
