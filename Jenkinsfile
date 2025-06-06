@@ -2,51 +2,44 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Setup') {
             steps {
-                echo '🔄 Cloning repository...'
+                // Pull your latest code from GitHub
                 git branch: 'main', url: 'https://github.com/pranavpatil-15/secure-app-backup.git'
             }
         }
 
-        stage('Setup and Run Flask App') {
+        stage('Install dependencies') {
             steps {
-                echo '🚀 Setting up environment and starting Flask app...'
+                // Assuming you have Python 3 and virtualenv installed on your EC2
                 sh '''
-                    cd $WORKSPACE
+                python3 -m venv venv
+                source venv/bin/activate
+                pip install -r requirements.txt
+                '''
+            }
+        }
 
-                    # Create virtual environment if not exists
-                    if [ ! -d "venv" ]; then
-                        python3 -m venv venv
-                    fi
+        stage('Run Flask App') {
+            steps {
+                // Kill any existing Flask processes on port 5000
+                sh '''
+                lsof -ti tcp:5000 | xargs -r kill -9
+                '''
 
-                    # Activate venv
-                    . venv/bin/activate
-
-                    # Install dependencies
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-
-                    # Kill old Flask app if running
-                    pkill -f app_test.py || true
-
-                    # Run Flask app in background
-                    nohup python3 app_test.py > flask_app.log 2>&1 &
-
-                    sleep 5
-                    curl -I http://localhost:5000 || echo "⚠️ Flask app not responding."
+                // Run Flask app in background using nohup so it keeps running after Jenkins finishes
+                sh '''
+                source venv/bin/activate
+                nohup python3 app_test.py > flask.log 2>&1 &
                 '''
             }
         }
     }
 
     post {
-        success {
-            echo '✅ Flask app launched successfully!'
-        }
-        failure {
-            echo '❌ Build failed. Showing Flask log:'
-            sh 'cat $WORKSPACE/flask_app.log || true'
+        always {
+            // Show last 20 lines of logs so you can debug if needed
+            sh 'tail -20 flask.log || echo "No logs yet"'
         }
     }
 }
